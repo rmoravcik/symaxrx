@@ -3,16 +3,30 @@
 #include "ServoTimer1.h"
 #include "symax_protocol.h"
 
+#define SERIAL_DEBUG true
+
+#if SERIAL_DEBUG
+uint8_t lastState = 255;
+#endif
+
+#define LED_STATUS false
+
+#if LED_STATUS
+#define LED_PIN 5
+unsigned long statusLedChangeTime = 0;
+byte statusLedState = LOW;
+#endif
+
 ServoTimer1 left;
 ServoTimer1 right;
 
 nrf24l01p wireless; 
 symaxProtocol protocol;
 
-unsigned long time = 0;
-
 void setup() {
+#if SERIAL_DEBUG
   Serial.begin(115200);
+#endif
 
   left.attach(9);
   right.attach(10);
@@ -20,42 +34,92 @@ void setup() {
   // SS pin must be set as output to set SPI to master !
   pinMode(SS, OUTPUT);
 
+#if LED_STATUS
+  // Set status LED
+  pinMode(LED_PIN, OUTPUT);
+  digitalWrite(LED_PIN, HIGH);
+#endif
+
   // Set CE pin to 5 and CS pin to 4
   wireless.setPins(5,4);
   
   // Set power (PWRLOW,PWRMEDIUM,PWRHIGH,PWRMAX)
   wireless.setPwr(PWRLOW);
-  
+
   protocol.init(&wireless);
-  
-  time = micros();
-  Serial.println("Start");
+
+#if SERIAL_DEBUG
+  Serial.println("Start...");
+#endif
 }
 
 rx_values_t rxValues;
 
-unsigned long newTime;
-
-void loop() 
+void loop()
 {
-  time = micros();
-  uint8_t value = protocol.run(&rxValues); 
-  newTime = micros();
   int left_value, right_value;
-   
-  switch (value)
+  uint8_t state = protocol.run(&rxValues);
+
+#if LED_STATUS
+  unsigned long currentMillis = millis();
+
+  if (state == BOUND)
+  {
+    digitalWrite(LED_PIN, HIGH);
+    statusLedState = HIGH;
+  }
+  else
+  {
+    // Blink the LED  
+    if (currentMillis - statusLedChangeTime > 200)
+    {
+      if (statusLedState == LOW)
+      {
+        digitalWrite(LED_PIN, HIGH);
+        statusLedState = HIGH;
+      }
+      else 
+      {
+        digitalWrite(LED_PIN, LOW);
+        statusLedState = LOW;
+      }
+      statusLedChangeTime = millis();
+    }
+  }
+#endif
+
+#if SERIAL_DEBUG
+  uint8_t currentState = protocol.getState();
+  if (currentState != lastState)
+  {
+    switch(currentState)
+    {
+      case BOUND:
+        Serial.println(F("Bound"));
+        break;
+      case NO_BIND:
+        Serial.println(F("Not bound"));
+      case WAIT_FIRST_SYNCHRO:
+        Serial.println(F("Waiting first synchronization"));
+        break;
+    }
+    lastState = currentState;
+  }
+#endif
+
+  switch (state)
   {
     case NOT_BOUND:
-      Serial.println("Not bound");
+      left.write(0);
+      right.write(0);
       break;
-      
+
     case BIND_IN_PROGRESS:
-      Serial.println("Bind in progress");
       break;
-    
+
     case BOUND_NEW_VALUES:
-      Serial.print(newTime - time);
-      Serial.print(" :\t");Serial.print(rxValues.throttle);
+#if SERIAL_DEBUG
+      Serial.print(rxValues.throttle);
       Serial.print("\t"); Serial.print(rxValues.yaw);
       Serial.print("\t"); Serial.print(rxValues.pitch);
       Serial.print("\t"); Serial.print(rxValues.roll);
@@ -66,6 +130,7 @@ void loop()
       Serial.print("\t"); Serial.print(rxValues.picture);
       Serial.print("\t"); Serial.print(rxValues.highspeed);
       Serial.print("\t"); Serial.println(rxValues.flip);
+#endif
 
       if (rxValues.roll > 0) // left
       {

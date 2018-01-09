@@ -1,11 +1,11 @@
 /* symax_protocol.cpp -- Handle the symax protocol.
-*
-* Copyright (C) 2014 Alexandre Clienti
-* Copyright (C) 2016 Suxsem
-*
-* This software may be modified and distributed under the terms
-* of the MIT license. See the LICENSE file for details.
-*/
+ *
+ * Copyright (C) 2014 Alexandre Clienti
+ * Copyright (C) 2016 Suxsem
+ *
+ * This software may be modified and distributed under the terms
+ * of the MIT license. See the LICENSE file for details.
+ */
 
 #include "symax_protocol.h"
 
@@ -45,6 +45,46 @@ void symaxProtocol::init(nrf24l01p *wireless)
     mLastSignalTime = millis();
 }
 
+/**
+ * Get the current state.
+ */
+uint8_t symaxProtocol::getState()
+{
+	return mState;
+}
+
+void symaxProtocol::reset()
+{
+	if (mState == NO_BIND)
+		return;
+
+	mWireless->setAddress(bind_rx_tx_addr, 5);
+	mWireless->switchFreq(chans_bind[0]);
+	mState = NO_BIND;
+}
+
+void symaxProtocol::scan()
+{
+	if (mState != NO_BIND)
+		return;
+
+	if (!mWireless->rxFlag())
+	{
+		unsigned long newTime = millis();
+
+		// Wait 128ms before switching the frequency
+		// 128ms is the time to a TX to emits on all this frequency
+		if ((newTime - mLastSignalTime) > 128) //TODO it's 128?
+		{
+			mRfChNum++;
+			if (mRfChNum >= FSIZE)
+				mRfChNum = 0;
+			mWireless->switchFreq(chans_bind[mRfChNum]);
+			mLastSignalTime = newTime;
+		}
+	}
+}
+
 // loop function, can be factorized (for later)
 uint8_t symaxProtocol::run( rx_values_t *rx_value )
 {
@@ -61,9 +101,7 @@ uint8_t symaxProtocol::run( rx_values_t *rx_value )
                 // Signal lost
                 if((newTime - mLastSignalTime) > 4000)
                 {
-                    mWireless->setAddress(bind_rx_tx_addr, 5);
-                    mWireless->switchFreq(chans_bind[0]);
-                    mState = NO_BIND;
+					          reset();
                     mLastSignalTime = newTime; 
                 }
             }
@@ -139,16 +177,7 @@ uint8_t symaxProtocol::run( rx_values_t *rx_value )
             
             if( !mWireless->rxFlag() )
             {
-                // Wait 128ms before switching the frequency
-                // 128ms is the time to a TX to emits on all this frequency
-                if((newTime - mLastSignalTime) > 128) //TODO it's 128?
-                {
-                    mRfChNum++;
-                    if(mRfChNum >= FSIZE)
-                    mRfChNum = 0;
-                    mWireless->switchFreq(chans_bind[mRfChNum]);
-                    mLastSignalTime = newTime;
-                }
+				        scan();
             }
             else
             {
