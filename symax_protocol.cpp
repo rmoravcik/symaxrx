@@ -77,7 +77,8 @@ uint8_t symaxProtocol::run( rx_values_t *rx_value )
                     if( checksum(mFrame) == mFrame[PSIZE-1] )
                     {
                         // a valid frame has been received
-                        incrementChannel = true;
+                        // https://forum.arduino.cc/index.php?topic=385731.msg3371324#msg3371324
+                        // incrementChannel = true;
 
                         // Discard bind frame
                         if( mFrame[5] != 0xAA && mFrame[6] != 0xAA )
@@ -202,7 +203,8 @@ uint8_t symaxProtocol::run( rx_values_t *rx_value )
                     
                     if( checksum(mFrame) == mFrame[PSIZE-1] )
                     {
-                        incrementChannel = true;
+                        // https://forum.arduino.cc/index.php?topic=385731.msg3371324#msg3371324
+                        // incrementChannel = true;
                         mState = BOUND;
                         mLastSignalTime = newTime;
                     }
