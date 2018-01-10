@@ -3,18 +3,18 @@
 #include "ServoTimer1.h"
 #include "symax_protocol.h"
 
-#define SERIAL_DEBUG true
+#define SERIAL_DEBUG false
 
 #if SERIAL_DEBUG
 uint8_t lastState = 255;
 #endif
 
-#define LED_STATUS false
+#define LED_STATUS true
 
 #if LED_STATUS
-#define LED_PIN 5
+#define LED_PIN 1
 unsigned long statusLedChangeTime = 0;
-byte statusLedState = LOW;
+byte statusLedState = HIGH;
 #endif
 
 ServoTimer1 left;
@@ -65,8 +65,8 @@ void loop()
 
   if (state == BOUND)
   {
-    digitalWrite(LED_PIN, HIGH);
-    statusLedState = HIGH;
+    digitalWrite(LED_PIN, LOW);
+    statusLedState = LOW;
   }
   else
   {
