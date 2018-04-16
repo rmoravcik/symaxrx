@@ -57,7 +57,7 @@ rx_values_t rxValues;
 
 void loop()
 {
-  int left_value, right_value;
+  int left_value, left_mapped, right_value, right_mapped;
   uint8_t state = protocol.run(&rxValues);
 
 #if LED_STATUS
@@ -118,19 +118,19 @@ void loop()
       break;
 
     case BOUND_NEW_VALUES:
-#if SERIAL_DEBUG
-      Serial.print(rxValues.throttle);
-      Serial.print("\t"); Serial.print(rxValues.yaw);
-      Serial.print("\t"); Serial.print(rxValues.pitch);
-      Serial.print("\t"); Serial.print(rxValues.roll);
-      Serial.print("\t"); Serial.print(rxValues.trim_yaw);
-      Serial.print("\t"); Serial.print(rxValues.trim_pitch);
-      Serial.print("\t"); Serial.print(rxValues.trim_roll);
-      Serial.print("\t"); Serial.print(rxValues.video);
-      Serial.print("\t"); Serial.print(rxValues.picture);
-      Serial.print("\t"); Serial.print(rxValues.highspeed);
-      Serial.print("\t"); Serial.println(rxValues.flip);
-#endif
+//#if SERIAL_DEBUG
+//      Serial.print(rxValues.throttle);
+//      Serial.print("\t"); Serial.print(rxValues.yaw);
+//      Serial.print("\t"); Serial.print(rxValues.pitch);
+//      Serial.print("\t"); Serial.print(rxValues.roll);
+//      Serial.print("\t"); Serial.print(rxValues.trim_yaw);
+//      Serial.print("\t"); Serial.print(rxValues.trim_pitch);
+//      Serial.print("\t"); Serial.print(rxValues.trim_roll);
+//      Serial.print("\t"); Serial.print(rxValues.video);
+//      Serial.print("\t"); Serial.print(rxValues.picture);
+//      Serial.print("\t"); Serial.print(rxValues.highspeed);
+//      Serial.print("\t"); Serial.println(rxValues.flip);
+//#endif
 
       if (rxValues.roll > 0) // left
       {
@@ -148,8 +148,25 @@ void loop()
         right_value = rxValues.throttle;
       }
 
-      left.write(map(left_value, 0, 255, 0, 180));
-      right.write(map(right_value, 0, 255, 0, 180));
+      if (left_value > 230)
+        left_mapped = 4.8 * left_value - 1044;
+      else
+        left_mapped = 0.195 * left_value + 15;
+
+      if (right_value > 230)
+        right_mapped = 4.8 * right_value - 1044;
+      else
+        right_mapped = 0.195 * right_value + 15;
+
+#if SERIAL_DEBUG
+      Serial.print(left_value);
+      Serial.print("\t => "); Serial.print(left_mapped);
+      Serial.print("\t\t"); Serial.print(right_value);
+      Serial.print("\t => "); Serial.println(right_mapped);
+#endif
+
+      left.write(left_mapped);
+      right.write(right_mapped);
       break;
 
     case BOUND_NO_VALUES:
